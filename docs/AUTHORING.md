@@ -1,7 +1,7 @@
 > [!NOTE]
-> 📘 **ClickUp Companion**, last synced **2026-08-27**
+> 📘 **ClickUp Companion**, last synced **2026-09-17**
 >
-> This document is mirrored in the NaNLABS internal ClickUp workspace for cross-team discovery and execution logging.
+> This document is mirrored in the NaNLABS internal ClickUp workspace for cross-team discovery and execution logging. Packs and contribution: [`PACKS.md`](PACKS.md), [`CONTRIBUTION.md`](CONTRIBUTION.md).
 >
 > **ClickUp** is the cross-team discovery + execution-log surface.
 > **This repo doc** is the co-located implementation reference (close to the code).
@@ -13,19 +13,30 @@
 
 This repository follows the open **[Agent Skills](https://agentskills.io/specification)** standard. Do not invent parallel manifests.
 
+Portable **plugins** additionally follow **[Agent Plugins](https://agent-plugins.org/specification)** v1.0.0. Those two layouts are different (see below).
+
 ## Skill layout (canonical)
 
+One tree. Author the skill where Agent Plugins discovers it:
+
 ```text
-skills/<group>/<skill>/
-├── SKILL.md          # Required: YAML frontmatter + instructions
-├── scripts/          # Optional: executable helpers
-├── references/       # Optional: progressive-disclosure docs
-├── assets/           # Optional: templates / data
-├── LICENSE.txt       # Optional: required when redistributing third-party skills
-└── NOTICE.txt        # Optional: NaNLABS modifications to third-party skills
+plugins/nanlabs-<group>/
+├── plugin.json
+└── skills/
+    └── <skill>/
+        ├── SKILL.md          # Required: YAML frontmatter + instructions
+        ├── scripts/          # Optional: executable helpers
+        ├── references/       # Optional: progressive-disclosure docs
+        ├── assets/           # Optional: templates / data
+        ├── LICENSE.txt       # Optional: required when redistributing third-party skills
+        └── NOTICE.txt        # Optional: NaNLABS modifications to third-party skills
 ```
 
-Grouped under `skills/<group>/` so the tree stays navigable; `npx skills` discovers nested `SKILL.md` (depth ≤ 5).
+`name` in frontmatter must match the directory. Grouping is inventory only (`catalogs/skills-layout.json` + `products/plugins.yaml` `skills_group`). Do **not** add `skills/<group>/` at repo root. `npx skills` still finds nested `SKILL.md` (depth ≤ 5).
+
+[Agent Plugins §7.1](https://agent-plugins.org/specification#71-skills) discovers **only immediate** `skills/<name>/SKILL.md` children. `gen-surfaces` writes manifests, LICENSE, and native plugin.json — it does **not** copy skill trees. Do not nest groups inside a plugin `skills/` directory. Do not add unknown top-level fields to `plugin.json`. Do not put agents or skill paths in that manifest. Optional MCP is root `mcp.json` only (this repo ships none).
+
+Domain packs (`catalogs/pack-catalog.yaml`) are `npx skills` aliases. Group packs map 1:1 onto these plugin directories. See [`PACKS.md`](PACKS.md) and [`AGENT_PLUGINS.md`](AGENT_PLUGINS.md).
 
 ### `SKILL.md` frontmatter
 
@@ -46,7 +57,7 @@ Optional spec fields: `license`, `compatibility`, `metadata`, `allowed-tools`.
 | `SKILL.md.tmpl` | Chezmoi template; this repo ships the rendered skill. |
 | Per-tool symlink matrices in-repo | Distribution is marketplace / `npx skills`, not home-dir symlinks. |
 
-Repo-level routing metadata lives in `catalogs/skill-catalog.yaml` (orchestrator index), not inside each skill folder.
+Repo-level routing metadata lives in `catalogs/skill-catalog.yaml` (orchestrator index) and `catalogs/pack-catalog.yaml` (installable packs), not inside each skill folder.
 
 ## Other paths
 
@@ -57,9 +68,11 @@ Repo-level routing metadata lives in `catalogs/skill-catalog.yaml` (orchestrator
 | `catalogs/agent-target-map.yaml` | Target-specific agent frontmatter overlays |
 | `mcp/templates/` | MCP config stubs (placeholders only) |
 | `plugins/<id>/` | Claude / Cursor plugin bundles |
-| `catalogs/` | Routing catalogs (`skill-catalog.yaml`, layout map) |
+| `catalogs/` | Routing catalogs (`skill-catalog.yaml`, `pack-catalog.yaml`, layout map) |
 | `contracts/requirements/` | Dependency/permission contracts (`RequirementContract` v1) |
-| GitHub issues `#24`, `#25`, `#28` | Future outcome-pack discovery / implementation |
+| `docs/PACKS.md` | Installable group and domain packs |
+| `docs/CONTRIBUTION.md` | Propose-via-PR flow |
+| GitHub issues `#24`, `#25`, `#28` | Remaining outcome-pack **content** (not this catalog) |
 
 ## Dependency contracts
 
@@ -71,13 +84,14 @@ python3 scripts/validate-contracts.py
 
 ## Rules
 
-1. Author skills under `skills/<group>/<skill>/` per the Agent Skills spec. Core plugin skills are mirrored from `skills/core/` via `scripts/gen-surfaces.py` (see `products/plugins.yaml`).
+1. Author skills under `plugins/nanlabs-<group>/skills/<skill>/` per the Agent Skills spec. Add the name to `catalogs/skills-layout.json` and `catalogs/skill-catalog.yaml`. `gen-surfaces` only refreshes manifests.
 2. Every `SKILL.md` needs valid YAML frontmatter (`name` + `description`).
-3. Never commit secrets. Use env-var names only in MCP stubs.
+3. Never commit secrets. Use env-var names only in MCP stubs. If adding `plugins/<id>/mcp.json`, it MUST use the Agent Plugins MCP schema and stay inside the plugin root.
 4. Public scrub: read `docs/PUBLIC_CONTENT_POLICY.md` before migrating internal content.
 5. Project overlays: follow `docs/OVERLAY_GOVERNANCE.md` (credentials remain L1-only).
 6. Keep upstream `LICENSE.txt` / `NOTICE.txt` when redistributing third-party skills.
-7. Run local validation before opening a PR:
+7. Do not treat a pack as a plugin: no `plugin.json` for catalog packs.
+8. Run local validation before opening a PR:
 
 ```bash
 bash scripts/validate-repo-structure.sh
@@ -86,6 +100,8 @@ python3 scripts/validate-agent-plugins.py
 python3 scripts/validate-public-content.py
 python3 scripts/validate-skills.py
 python3 scripts/validate-agents.py
+python3 scripts/validate-pack-catalog.py
+python3 scripts/validate-skill-inventory.py
 python3 scripts/validate-mcp.py
 python3 scripts/validate-contracts.py
 python3 scripts/gen-surfaces.py --check
@@ -96,11 +112,14 @@ pre-commit run --all-files
 
 ## Adding a plugin
 
-1. Register the plugin in `products/plugins.yaml` and create its
-   `plugins/<plugin-id>/` root.
-2. Create `plugins/<plugin-id>/.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` for native clients.
-3. Register it in `.claude-plugin/marketplace.json` and `.cursor-plugin/marketplace.json`.
+1. Register the plugin in `products/plugins.yaml` (`skills_group` and/or `agents`).
+2. For a group plugin, put skills at `plugins/<id>/skills/<name>/SKILL.md` and
+   list them in `catalogs/skills-layout.json`.
+3. Run `python3 scripts/gen-surfaces.py` then `python3 scripts/gen-copilot-surfaces.py`
+   to generate native + portable manifests, LICENSE, marketplaces
+   (Claude, Cursor, `.agents/plugins/`), and Copilot agent files.
+   Do not copy skill trees.
 4. Keep plugin `name` fields identical across marketplace entries and plugin manifests.
-5. Update catalogs when the plugin exposes new skills/agents.
-6. Run `python3 scripts/gen-copilot-surfaces.py` to generate the portable
-   manifest and Copilot surfaces, then run the local validation commands below.
+5. Run `python3 scripts/validate-skill-inventory.py`,
+   `python3 scripts/validate-agent-plugins.py`, plus the other local
+   validation commands above.

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for plugin packages.
 
+## [Unreleased]
+
+- One **plugin per skill group**. Canonical skills live only under `plugins/nanlabs-<group>/skills/<name>/` (no `skills/<group>/` tree, no `.github/skills/` mirror). `gen-surfaces` writes manifests only.
+- Marketplace metadata **0.6.0**. `nanlabs-core` **0.4.0**. New group plugins at **0.1.0**: `nanlabs-data`, `nanlabs-delivery`, `nanlabs-design`, `nanlabs-forge`, `nanlabs-integrations`, `nanlabs-ops`, `nanlabs-tooling`, `nanlabs-workflow`. Optional `nanlabs-agents` unchanged at 0.2.1.
+- ChatGPT/Codex catalog at `.agents/plugins/marketplace.json`. Copilot VS Code agents under `com.github.copilot/agents/`.
+- Inventory CI (`scripts/validate-skill-inventory.py`) fails on duplicated or leftover skill trees.
+- Domain and group **packs** as catalog aliases (`catalogs/pack-catalog.yaml`) with `npx skills` plugin-dir / `--skill` install and `scripts/install-pack.sh`. Group packs map 1:1 onto group plugins.
+- Skill `nanlabs-propose-skill` plus contribution docs and PR/issue checklists (propose via GitHub, maintainer review, then installable).
+- Handoff contracts: planner emits HTML; code reviewer posts on the pull request. Coverage map in `docs/COVERAGE.md`.
+
 ## [0.3.1] — 2026-08-27
 
 - Public-content hardening removes direct internal ClickUp workspace/document URLs and adds a deterministic public-content validator.

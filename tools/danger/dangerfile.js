@@ -26,6 +26,20 @@ const publicRepoChecklist = [
   "Manifests still validate (`python3 scripts/validate-manifests.py`)",
 ];
 
+const skillAgentChecklist = [
+  "Not a duplicate of an existing catalog skill or agent",
+  "Pack membership recorded in `catalogs/pack-catalog.yaml` (or N/A)",
+  "Handoff / output contract documented (or N/A; see `docs/HANDOFFS.md`)",
+  "Cloud-safe as skills-only (or documented Code/Cursor-only)",
+  "`docs/PUBLIC_CONTENT_POLICY.md` satisfied",
+];
+
+const agentPluginsChecklist = [
+  "Root `plugin.json` is closed-schema v1 (`$schema` + `name`; no `skills`/`agents` path fields)",
+  "Plugin skills are immediate `plugins/<id>/skills/<name>/SKILL.md` (not nested groups)",
+  "Packs were not given a `plugin.json` (`python3 scripts/validate-agent-plugins.py`)",
+];
+
 const prBody = danger.github.pr.body ?? "";
 const prTitle = danger.github.pr.title ?? "";
 const releasePrTitle =
@@ -113,11 +127,22 @@ if (hasDocs) {
   message("Thanks for updating documentation! :books:");
 }
 
-const hasSkills = touchedFiles.some((f) => f.startsWith("skills/"));
-if (hasSkills) {
+const hasSkills = touchedFiles.some((f) => f.includes("/skills/"));
+const hasAgents = touchedFiles.some((f) => f.startsWith("agents/"));
+if (hasSkills || hasAgents) {
   message(
-    "Skills changed — remember `docs/PUBLIC_CONTENT_POLICY.md` and `python3 scripts/validate-skills.py`.",
+    "Skills/agents changed — remember `docs/PUBLIC_CONTENT_POLICY.md`, `docs/CONTRIBUTION.md`, and `python3 scripts/validate-skills.py` / `validate-pack-catalog.py`.",
   );
+  if (!hasSection("## Skill / Agent checklist")) {
+    warn(
+      ":clipboard: Skill/Agent checklist — include <i>## Skill / Agent checklist</i> when changing skills or agents.",
+    );
+  }
+  skillAgentChecklist.forEach((item) => {
+    if (!isChecklistItemChecked(item)) {
+      warn(`:mag: Skill/Agent checklist — please confirm: <i>${item}</i>`);
+    }
+  });
 }
 
 const hasManifests = touchedFiles.some(
@@ -131,6 +156,29 @@ if (hasManifests) {
 }
 
 const allTouched = [...touchedFiles, ...danger.git.deleted_files];
+const hasAgentPlugins = allTouched.some(
+  (f) =>
+    f.startsWith("plugins/") ||
+    f.startsWith("schemas/agent-plugins/") ||
+    f === "scripts/validate-agent-plugins.py" ||
+    f === "scripts/gen-copilot-surfaces.py",
+);
+if (hasAgentPlugins) {
+  warn(
+    "Agent Plugins files changed — keep root `plugin.json` closed-schema and skills as immediate `plugins/<id>/skills/<name>/SKILL.md` ([spec §7.1](https://agent-plugins.org/specification#71-skills)). Packs are not plugins. Run `python3 scripts/validate-agent-plugins.py`.",
+  );
+  if (!hasSection("## Agent Plugins checklist")) {
+    warn(
+      ":clipboard: Agent Plugins checklist — include <i>## Agent Plugins checklist</i> when changing `plugins/`.",
+    );
+  }
+  agentPluginsChecklist.forEach((item) => {
+    if (!isChecklistItemChecked(item)) {
+      warn(`:package: Agent Plugins checklist — please confirm: <i>${item}</i>`);
+    }
+  });
+}
+
 const modifiedAnyPackageJson = allTouched.some((f) => f.endsWith("package.json"));
 const modifiedLockfile = allTouched.some((f) => f.endsWith("pnpm-lock.yaml"));
 if (modifiedLockfile && !modifiedAnyPackageJson) {

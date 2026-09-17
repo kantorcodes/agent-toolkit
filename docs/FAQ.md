@@ -1,5 +1,5 @@
 > [!NOTE]
-> 📘 **Repo-Only Doc** — last reviewed **2026-08-27**
+> 📘 **Repo-Only Doc** — last reviewed **2026-09-17**
 >
 > This document lives only in the repo. It is public-ready and self-contained.
 
@@ -9,7 +9,7 @@
 
 ## Is this only for Claude Code?
 
-No. Equal priority: **Claude · Claude Code · Cursor IDE · Cursor Agent CLI · GitHub Copilot**.
+No. Production is the [Agent Plugins roster](https://agent-plugins.org/compatible-clients) (VS Code, Copilot, Cursor, ChatGPT/Codex, Kiro, Grok Bot, Hermes, OpenClaw, NanoClaw) **plus** Claude Code.
 
 ## How does this differ from `ulises-jeremias/agent-toolkit`?
 
@@ -27,9 +27,21 @@ Not to install public plugins/skills. Yes for NaNLABS machine provisioning and s
 
 Merged into **`nanlabs-core`** (v0.3.0+). Use `/nanlabs-core:setup`.
 
-## Skills-only vs plugins?
+## Skills-only vs plugins vs packs?
 
-Skills-only installs skills alone. Plugins add agents, commands, and the bundled setup doctor. Neither path installs MCP.
+Three different layouts:
+
+| Path | Spec | What you get |
+| --- | --- | --- |
+| Skills-only / domain packs | [Agent Skills](https://agentskills.io/specification) + `npx skills` | `plugins/nanlabs-<group>/skills/<name>/SKILL.md`. Domain packs are `--skill` aliases. |
+| Agent Plugins v1 | [Agent Plugins](https://agent-plugins.org/specification) | Closed root `plugin.json` plus **immediate** `plugins/<id>/skills/<name>/SKILL.md`. Agents are not portable in v1. This repo ships no `mcp.json`. |
+| Claude Code / Cursor plugins | Native marketplaces | Agents, commands, hooks, doctor. Native manifests live under `.claude-plugin/` / `.cursor-plugin/`. |
+
+Group packs (`npx skills add nanlabs/agent-toolkit/plugins/nanlabs-delivery/skills`) match group plugins. See [PACKS.md](PACKS.md). Portable vs native: [AGENT_PLUGINS.md](AGENT_PLUGINS.md).
+
+## How do I share a skill?
+
+Open a GitHub issue with the Propose skill template and a pull request. Maintainers approve; merge makes it installable. See [CONTRIBUTION.md](CONTRIBUTION.md).
 
 ## Cursor Agent CLI vs IDE?
 
