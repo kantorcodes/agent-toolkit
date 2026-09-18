@@ -3,8 +3,8 @@ name: hol-guard
 description: >-
   HOW - Set up, verify, and troubleshoot HOL Guard local protection for supported
   AI coding harnesses. Use when a user wants to inspect Guard status, detect a
-  harness, run guided or manual setup, perform a dry run, launch through Guard,
-  or review approvals and receipts.
+  harness, install Guard, run guided or manual setup, perform a dry run, launch
+  through Guard, or review approvals and receipts.
 metadata:
   author: nanlabs
   version: "1.0"
@@ -18,8 +18,9 @@ remain authoritative. Do not weaken them to make Guard work.
 
 ## When to use
 
+- Install HOL Guard when the executable is not present.
 - Check whether HOL Guard is running and what it is protecting.
-- Detect a supported local harness before installation.
+- Detect a supported local harness before harness installation.
 - Run guided or manual Guard setup.
 - Test a harness through Guard before a protected launch.
 - Review queued approvals, diffs, receipts, or troubleshooting evidence.
@@ -34,19 +35,40 @@ remain authoritative. Do not weaken them to make Guard work.
 - Prefer the narrowest harness and approval scope that solves the task.
 - Do not use `hol-guard init --yes` unless unattended setup was explicitly
   requested and side effects are acceptable.
-- If `hol-guard` is not installed, stop and use the official HOL Guard
-  installation documentation. Do not invent a package-manager command.
+- Do not start mutation-bearing harness work until Guard has passed the health
+  gate below. If Guard cannot prove a healthy protection state, stop instead of
+  launching the harness unprotected.
 
 ## Procedure
 
-1. Inspect the current state before changing anything:
+1. Ensure the `hol-guard` executable is installed. Use one of the supported HOL
+   Guard package surfaces rather than inventing an installer:
+
+   ```bash
+   pipx install hol-guard
+   ```
+
+   If the user is intentionally working inside a Python environment instead of
+   an isolated `pipx` application environment, use that environment's Python:
+
+   ```bash
+   python -m pip install hol-guard
+   ```
+
+   Confirm the installed executable before continuing:
+
+   ```bash
+   hol-guard --version
+   ```
+
+2. Inspect the current state before changing harness configuration:
 
    ```bash
    hol-guard status --json
    hol-guard detect --json
    ```
 
-2. For guided first-run setup, use the interactive flow:
+3. For guided first-run setup, use the interactive flow:
 
    ```bash
    hol-guard init
@@ -58,7 +80,7 @@ remain authoritative. Do not weaken them to make Guard work.
    hol-guard bootstrap
    ```
 
-3. Use the exact harness identifier requested by the user or returned by
+4. Use the exact harness identifier requested by the user or returned by
    detection. Common identifiers include `codex`, `claude`, `cursor`, `gemini`,
    and `opencode`. Install Guard for that harness only when installation is in
    scope:
@@ -67,27 +89,40 @@ remain authoritative. Do not weaken them to make Guard work.
    hol-guard install <harness>
    ```
 
-4. Run a dry pass before a live protected launch:
+5. Run a dry pass before a live protected launch:
 
    ```bash
    hol-guard run <harness> --dry-run
    ```
 
-5. If detection, installation, or the dry run is inconsistent, diagnose before
-   changing more state:
+6. Enforce the health gate before any live mutation-bearing work. Re-run status
+   after setup and require both commands below to succeed:
+
+   ```bash
+   hol-guard status --json
+   hol-guard run <harness> --dry-run
+   ```
+
+   Stop if either command exits nonzero, if status reports that protection is
+   degraded, inactive, or needs repair, or if the dry run cannot verify the
+   selected harness. Do not fall back to launching the harness directly.
+
+   When the health gate fails, diagnose before changing more state:
 
    ```bash
    hol-guard doctor <harness> --json
    hol-guard diff <harness>
    ```
 
-6. Launch through Guard after the dry run is understood:
+   Repair the reported condition, then repeat the health gate from the start.
+
+7. Launch through Guard only after the health gate passes:
 
    ```bash
    hol-guard run <harness>
    ```
 
-7. Review decisions and evidence without bypassing the approval flow:
+8. Review decisions and evidence without bypassing the approval flow:
 
    ```bash
    hol-guard approvals
@@ -105,6 +140,7 @@ Report only what is needed to continue safely:
 - detected harness or harnesses
 - current Guard status
 - commands that actually ran and whether they succeeded
+- whether the health gate passed or blocked the launch
 - pending approvals or warnings
 - the next safe command, if one is needed
 
